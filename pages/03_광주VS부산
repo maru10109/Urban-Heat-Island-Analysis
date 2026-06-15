@@ -1,0 +1,150 @@
+import streamlit as st
+import plotly.graph_objects as go
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from data_loader import load_data
+
+st.set_page_config(page_title="광주 vs 부산", page_icon="4️⃣", layout="wide")
+
+df = load_data()
+cities = ["광주광역시", "부산광역시"]
+data = df[df["지역"].isin(cities)].set_index("지역")
+
+COLORS = {"광주광역시": "#7D3C98", "부산광역시": "#117A65"}
+
+st.title("4️⃣ 광주광역시 vs 부산광역시")
+st.caption("📍 북위 약 35.1° | 위도 조건이 유사한 두 도시 비교 (2023년 기준)")
+st.markdown("---")
+
+cols = st.columns(4)
+metrics = [
+    ("🌡️ 평균기온(°C)", "평균기온"),
+    ("💨 평균풍속(m/s)", "평균풍속"),
+    ("🏙️ 건물밀집도(개/km²)", "건물밀집도"),
+    ("🌿 녹지율(%)", "녹지율"),
+]
+for col, (label, key) in zip(cols, metrics):
+    with col:
+        g_val = data.loc["광주광역시", key]
+        b_val = data.loc["부산광역시", key]
+        delta = round(g_val - b_val, 2)
+        st.metric(f"광주 {label}", f"{g_val:.2f}", delta=f"광주-부산: {delta:+.2f}")
+
+st.markdown("---")
+st.subheader("📊 세부 비교 차트")
+
+tab1, tab2, tab3 = st.tabs(["🌡️ 온도 & 풍속", "🏙️ 건물밀집도", "🌿 녹지율"])
+
+with tab1:
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Bar(
+                name=city, x=[city], y=[data.loc[city, "평균기온"]],
+                marker_color=COLORS[city],
+                text=[f"{data.loc[city, '평균기온']:.1f}°C"], textposition="outside",
+            ))
+        fig.update_layout(title="평균기온 비교", yaxis_title="기온 (°C)",
+                          yaxis=dict(range=[13, 18]), showlegend=False, height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Bar(
+                name=city, x=[city], y=[data.loc[city, "평균풍속"]],
+                marker_color=COLORS[city],
+                text=[f"{data.loc[city, '평균풍속']:.1f} m/s"], textposition="outside",
+            ))
+        fig.update_layout(title="평균풍속 비교", yaxis_title="풍속 (m/s)",
+                          yaxis=dict(range=[0, 5]), showlegend=False, height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+with tab2:
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Bar(
+                name=city, x=[city], y=[data.loc[city, "건물밀집도"]],
+                marker_color=COLORS[city],
+                text=[f"{data.loc[city, '건물밀집도']:.1f}개/km²"], textposition="outside",
+            ))
+        fig.update_layout(title="건물밀집도 비교 (개/km²)", yaxis_title="건물밀집도",
+                          showlegend=False, height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Scatter(
+                x=[data.loc[city, "건물밀집도"]], y=[data.loc[city, "평균기온"]],
+                mode="markers+text", name=city, text=[city], textposition="top center",
+                marker=dict(size=20, color=COLORS[city]),
+            ))
+        fig.update_layout(title="건물밀집도 vs 평균기온",
+                          xaxis_title="건물밀집도 (개/km²)", yaxis_title="평균기온 (°C)", height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+    fig = go.Figure()
+    for city in cities:
+        fig.add_trace(go.Scatter(
+            x=[data.loc[city, "건물밀집도"]], y=[data.loc[city, "평균풍속"]],
+            mode="markers+text", name=city, text=[city], textposition="top center",
+            marker=dict(size=20, color=COLORS[city]),
+        ))
+    fig.update_layout(title="건물밀집도 vs 평균풍속",
+                      xaxis_title="건물밀집도 (개/km²)", yaxis_title="평균풍속 (m/s)", height=380)
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab3:
+    c1, c2 = st.columns(2)
+    with c1:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Bar(
+                name=city, x=[city], y=[data.loc[city, "녹지율"]],
+                marker_color=COLORS[city],
+                text=[f"{data.loc[city, '녹지율']:.2f}%"], textposition="outside",
+            ))
+        fig.update_layout(title="녹지율 비교 (%)", yaxis_title="녹지율 (%)",
+                          showlegend=False, height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        fig = go.Figure()
+        for city in cities:
+            fig.add_trace(go.Scatter(
+                x=[data.loc[city, "녹지율"]], y=[data.loc[city, "평균기온"]],
+                mode="markers+text", name=city, text=[city], textposition="top center",
+                marker=dict(size=20, color=COLORS[city]),
+            ))
+        fig.update_layout(title="녹지율 vs 평균기온",
+                          xaxis_title="녹지율 (%)", yaxis_title="평균기온 (°C)", height=380)
+        st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+st.subheader("🔍 분석 해석")
+
+gwangju = data.loc["광주광역시"]
+busan = data.loc["부산광역시"]
+diff_temp = gwangju["평균기온"] - busan["평균기온"]
+diff_wind = gwangju["평균풍속"] - busan["평균풍속"]
+diff_density = gwangju["건물밀집도"] - busan["건물밀집도"]
+diff_green = gwangju["녹지율"] - busan["녹지율"]
+
+st.markdown(f"""
+| 항목 | 광주 | 부산 | 차이 (광주 - 부산) | 가설 부합 여부 |
+|------|------|------|-------------------|----------------|
+| 평균기온 | {gwangju['평균기온']:.1f}°C | {busan['평균기온']:.1f}°C | **{diff_temp:+.1f}°C** | {'✅' if diff_density > 0 and diff_temp > 0 else '❌'} 건물밀집↑ → 기온↑ |
+| 평균풍속 | {gwangju['평균풍속']:.1f} m/s | {busan['평균풍속']:.1f} m/s | **{diff_wind:+.1f} m/s** | {'✅' if diff_density > 0 and diff_wind < 0 else '❌'} 건물밀집↑ → 풍속↓ |
+| 건물밀집도 | {gwangju['건물밀집도']:.1f} 개/km² | {busan['건물밀집도']:.1f} 개/km² | **{diff_density:+.1f}** | — |
+| 녹지율 | {gwangju['녹지율']:.2f}% | {busan['녹지율']:.2f}% | **{diff_green:+.2f}%** | {'✅' if diff_green < 0 and diff_temp > 0 else '❌'} 녹지↓ → 기온↑ |
+""")
+
+st.info("""
+💡 **광주 vs 부산 특이점**: 부산은 해안도시로 해양성 기후의 영향으로 온도가 높게 나타날 수 있습니다.
+광주는 내륙 도시임에도 비교적 온도가 높은 편으로, 건물밀집도 외에도 
+분지 지형 여부, 해풍 유입 여부 등 지형적 요인도 함께 고려할 필요가 있습니다.
+""")
