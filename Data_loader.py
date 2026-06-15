@@ -4,7 +4,7 @@ import streamlit as st
 # ── GitHub raw CSV URL ──────────────────────────────────────────────────────
 # 아래 URL을 본인의 GitHub 저장소 raw 링크로 교체하세요.
 # 예시: https://raw.githubusercontent.com/<유저명>/<레포명>/main/통합본.csv
-CSV_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/통합본.csv"
+CSV_URL = "https://raw.githubusercontent.com/maru10109/Urban-Heat-Island-Analysis/main/통합본.csv"
 
 @st.cache_data(ttl=3600)
 def load_data() -> pd.DataFrame:
