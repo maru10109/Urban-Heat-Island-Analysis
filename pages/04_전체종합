@@ -1,0 +1,244 @@
+import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+import numpy as np
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from data_loader import load_data
+
+st.set_page_config(page_title="전체 종합", page_icon="5️⃣", layout="wide")
+
+df = load_data()
+
+# 도시 순서 정렬 (건물밀집도 내림차순)
+df_sorted = df.sort_values("건물밀집도", ascending=False).reset_index(drop=True)
+
+CITY_COLORS = {
+    "서울특별시": "#E63946",
+    "인천광역시": "#457B9D",
+    "세종특별자치시": "#2D6A4F",
+    "대전광역시": "#B7950B",
+    "대구광역시": "#C0392B",
+    "울산광역시": "#1A5276",
+    "광주광역시": "#7D3C98",
+    "부산광역시": "#117A65",
+}
+colors = [CITY_COLORS[c] for c in df_sorted["지역"]]
+
+st.title("5️⃣ 전체 도시 종합 분석")
+st.caption("📊 8개 광역시·특별시 전체 비교 | 2023년 기준")
+st.markdown("---")
+
+# ── 전체 지표 테이블 ─────────────────────────────────────────────────────────
+st.subheader("📋 전체 데이터 요약")
+display_df = df_sorted[["지역", "평균기온", "평균풍속", "건물밀집도", "녹지율"]].copy()
+display_df.columns = ["지역", "평균기온(°C)", "평균풍속(m/s)", "건물밀집도(개/km²)", "녹지율(%)"]
+display_df = display_df.set_index("지역")
+display_df = display_df.round(2)
+st.dataframe(display_df.style.background_gradient(cmap="YlOrRd", subset=["평균기온(°C)"])
+                              .background_gradient(cmap="Blues_r", subset=["평균풍속(m/s)"])
+                              .background_gradient(cmap="Reds", subset=["건물밀집도(개/km²)"])
+                              .background_gradient(cmap="Greens", subset=["녹지율(%)"]),
+             use_container_width=True)
+
+st.markdown("---")
+
+# ── 4개 지표 막대 그래프 ─────────────────────────────────────────────────────
+st.subheader("📊 8개 도시 전체 비교 차트")
+
+tab1, tab2, tab3, tab4 = st.tabs(["🌡️ 평균기온", "💨 평균풍속", "🏙️ 건물밀집도", "🌿 녹지율"])
+
+with tab1:
+    fig = go.Figure(go.Bar(
+        x=df_sorted["지역"], y=df_sorted["평균기온"],
+        marker_color=colors,
+        text=[f"{v:.1f}°C" for v in df_sorted["평균기온"]],
+        textposition="outside",
+    ))
+    fig.update_layout(title="8개 도시 평균기온 비교 (건물밀집도 내림차순)",
+                      yaxis_title="평균기온 (°C)", yaxis=dict(range=[12, 18]), height=420)
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab2:
+    fig = go.Figure(go.Bar(
+        x=df_sorted["지역"], y=df_sorted["평균풍속"],
+        marker_color=colors,
+        text=[f"{v:.1f} m/s" for v in df_sorted["평균풍속"]],
+        textposition="outside",
+    ))
+    fig.update_layout(title="8개 도시 평균풍속 비교 (건물밀집도 내림차순)",
+                      yaxis_title="평균풍속 (m/s)", yaxis=dict(range=[0, 4.5]), height=420)
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab3:
+    fig = go.Figure(go.Bar(
+        x=df_sorted["지역"], y=df_sorted["건물밀집도"],
+        marker_color=colors,
+        text=[f"{v:.1f}" for v in df_sorted["건물밀집도"]],
+        textposition="outside",
+    ))
+    fig.update_layout(title="8개 도시 건물밀집도 비교",
+                      yaxis_title="건물밀집도 (개/km²)", height=420)
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab4:
+    df_green = df.sort_values("녹지율", ascending=False)
+    colors_green = [CITY_COLORS[c] for c in df_green["지역"]]
+    fig = go.Figure(go.Bar(
+        x=df_green["지역"], y=df_green["녹지율"],
+        marker_color=colors_green,
+        text=[f"{v:.2f}%" for v in df_green["녹지율"]],
+        textposition="outside",
+    ))
+    fig.update_layout(title="8개 도시 녹지율 비교 (녹지율 내림차순)",
+                      yaxis_title="녹지율 (%)", height=420)
+    st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+
+# ── 산점도: 전체 상관관계 시각화 ────────────────────────────────────────────
+st.subheader("🔬 변수 간 상관관계 분석 (전체 8개 도시)")
+
+tab_a, tab_b, tab_c = st.tabs([
+    "건물밀집도 vs 기온",
+    "건물밀집도 vs 풍속",
+    "녹지율 vs 기온",
+])
+
+def scatter_with_trendline(x_col, y_col, x_label, y_label, title):
+    fig = go.Figure()
+    for _, row in df.iterrows():
+        fig.add_trace(go.Scatter(
+            x=[row[x_col]], y=[row[y_col]],
+            mode="markers+text",
+            name=row["지역"],
+            text=[row["지역"]],
+            textposition="top center",
+            marker=dict(size=16, color=CITY_COLORS[row["지역"]]),
+            showlegend=True,
+        ))
+    # 추세선
+    x_vals = df[x_col].values
+    y_vals = df[y_col].values
+    m, b = np.polyfit(x_vals, y_vals, 1)
+    x_line = np.linspace(x_vals.min(), x_vals.max(), 100)
+    y_line = m * x_line + b
+    corr = np.corrcoef(x_vals, y_vals)[0, 1]
+    fig.add_trace(go.Scatter(
+        x=x_line, y=y_line,
+        mode="lines",
+        name=f"추세선 (r={corr:.2f})",
+        line=dict(color="gray", dash="dash", width=2),
+        showlegend=True,
+    ))
+    fig.update_layout(
+        title=f"{title} (상관계수 r = {corr:.2f})",
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        height=480,
+        legend=dict(orientation="v", x=1.01, y=1),
+    )
+    return fig, corr
+
+with tab_a:
+    fig, corr = scatter_with_trendline("건물밀집도", "평균기온",
+                                       "건물밀집도 (개/km²)", "평균기온 (°C)",
+                                       "건물밀집도 vs 평균기온")
+    st.plotly_chart(fig, use_container_width=True)
+    direction = "양의" if corr > 0 else "음의"
+    strength = "강한" if abs(corr) > 0.7 else ("보통의" if abs(corr) > 0.4 else "약한")
+    verdict = "✅ 가설 지지" if corr > 0.3 else "❌ 가설 불지지"
+    st.info(f"**가설 1 검증**: 건물밀집도↑ → 기온↑ | 상관계수 r = {corr:.2f} → {direction} {strength} 상관관계 | {verdict}")
+
+with tab_b:
+    fig, corr = scatter_with_trendline("건물밀집도", "평균풍속",
+                                       "건물밀집도 (개/km²)", "평균풍속 (m/s)",
+                                       "건물밀집도 vs 평균풍속")
+    st.plotly_chart(fig, use_container_width=True)
+    direction = "양의" if corr > 0 else "음의"
+    strength = "강한" if abs(corr) > 0.7 else ("보통의" if abs(corr) > 0.4 else "약한")
+    verdict = "✅ 가설 지지" if corr < -0.3 else "❌ 가설 불지지"
+    st.info(f"**가설 2 검증**: 건물밀집도↑ → 풍속↓ | 상관계수 r = {corr:.2f} → {direction} {strength} 상관관계 | {verdict}")
+
+with tab_c:
+    fig, corr = scatter_with_trendline("녹지율", "평균기온",
+                                       "녹지율 (%)", "평균기온 (°C)",
+                                       "녹지율 vs 평균기온")
+    st.plotly_chart(fig, use_container_width=True)
+    direction = "양의" if corr > 0 else "음의"
+    strength = "강한" if abs(corr) > 0.7 else ("보통의" if abs(corr) > 0.4 else "약한")
+    verdict = "✅ 가설 지지" if corr < -0.3 else "❌ 가설 불지지"
+    st.info(f"**가설 3 검증**: 녹지율↑ → 기온↓ | 상관계수 r = {corr:.2f} → {direction} {strength} 상관관계 | {verdict}")
+
+st.markdown("---")
+
+# ── 레이더 차트 ──────────────────────────────────────────────────────────────
+st.subheader("🕸️ 도시별 종합 레이더 차트")
+
+# 정규화 (0~1)
+df_norm = df.copy()
+for col in ["평균기온", "평균풍속", "건물밀집도", "녹지율"]:
+    df_norm[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+
+categories = ["평균기온", "평균풍속", "건물밀집도", "녹지율"]
+fig = go.Figure()
+for _, row in df_norm.iterrows():
+    vals = [row[c] for c in categories]
+    vals += vals[:1]
+    fig.add_trace(go.Scatterpolar(
+        r=vals,
+        theta=categories + [categories[0]],
+        fill="toself",
+        name=row["지역"],
+        line=dict(color=CITY_COLORS[row["지역"]]),
+        opacity=0.5,
+    ))
+fig.update_layout(
+    polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+    showlegend=True,
+    title="8개 도시 종합 레이더 (정규화 값)",
+    height=550,
+)
+st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+
+# ── 최종 결론 ────────────────────────────────────────────────────────────────
+st.subheader("📝 최종 결론 및 시사점")
+
+x1 = df["건물밀집도"].values
+x2 = df["녹지율"].values
+y_temp = df["평균기온"].values
+y_wind = df["평균풍속"].values
+
+r1 = np.corrcoef(x1, y_temp)[0, 1]
+r2 = np.corrcoef(x1, y_wind)[0, 1]
+r3 = np.corrcoef(x2, y_temp)[0, 1]
+
+def judge(r, positive=True):
+    if positive:
+        return "✅ 지지됨" if r > 0.3 else "❌ 지지되지 않음"
+    else:
+        return "✅ 지지됨" if r < -0.3 else "❌ 지지되지 않음"
+
+st.markdown(f"""
+### 가설 검증 최종 요약
+
+| 가설 | 상관계수 | 결론 |
+|------|----------|------|
+| 가설 1: 건물밀집도↑ → 평균기온↑ | r = **{r1:.3f}** | {judge(r1, True)} |
+| 가설 2: 건물밀집도↑ → 평균풍속↓ | r = **{r2:.3f}** | {judge(r2, False)} |
+| 가설 3: 녹지율↑ → 평균기온↓ | r = **{r3:.3f}** | {judge(r3, False)} |
+
+### 📌 주요 시사점
+- 본 분석은 **2023년 단일 연도** 데이터이므로 통계적 유의성에 한계가 있습니다.
+- 도시 온도는 건물밀집도 외에도 **지형(해안·내륙·분지)**, **산업 구조**, **인구 밀도** 등 
+  복합적 요인의 영향을 받습니다.
+- 그럼에도 불구하고, 서울(고밀도·고온)과 세종(저밀도·저온·고녹지)의 대비는 
+  **도시계획이 열환경에 미치는 영향**을 잘 보여주는 사례입니다.
+- 향후 **다년간 데이터** 및 **위성 지표면온도(LST) 데이터**를 결합하면 
+  더 신뢰도 높은 분석이 가능합니다.
+""")
+
+st.success("📊 분석 완료 | 데이터 출처: 통계청, 기상청, 국토교통부 (2023년 기준)")
