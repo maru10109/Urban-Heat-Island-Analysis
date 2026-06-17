@@ -41,22 +41,20 @@ st.markdown("""
 st.markdown("---")
 
 @st.cache_data
-@st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    # 여러 인코딩을 순서대로 시도
     for enc in ["utf-8", "cp949", "euc-kr", "utf-8-sig"]:
         try:
             df = pd.read_csv(path, encoding=enc)
-            break  # 성공하면 반복 중단
+            break
         except UnicodeDecodeError:
-            continue  # 실패하면 다음 인코딩 시도
+            continue
     else:
-        # 모든 인코딩이 실패한 경우
         raise ValueError("CSV 파일의 인코딩을 읽을 수 없습니다.")
 
-    df = df.dropna(axis=1, how="all")             # 완전히 빈 열 제거
-    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
+    df = df.dropna(axis=1, how="all")
+    df.columns = [c.strip() for c in df.columns]
     return df
+
 try:
     df = load_data("통합본.csv")
     st.subheader("📊 전체 데이터 미리보기")
