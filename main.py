@@ -7,38 +7,44 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🏙️ 도시 열섬효과 분석 프로젝트")
+st.markdown("""
+<style>
+    .main-title { font-size: 2.2rem; font-weight: 800; text-align: center; padding: 1rem 0; }
+    .sub-title { font-size: 1rem; color: #888; text-align: center; margin-bottom: 1.5rem; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">🏙️ 도시 열섬효과 분석 프로젝트</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">건물 밀집도 · 녹지율이 기온과 풍속에 미치는 영향 탐구</div>', unsafe_allow_html=True)
 st.markdown("---")
 
 st.markdown("""
-### 📌 프로젝트 소개
-이 프로젝트는 **도시 열섬효과**를 행정구역별 데이터로 분석합니다.
-
-도시의 **평균기온**이 다음 요소들과 어떤 관계가 있는지 살펴봅니다.
-- 🌳 총 도시공원면적
-- 🏢 면적별 건축물 현황
-- 🌆 도시지역면적
-- 🌬️ 평균 풍속
+### 🎯 연구 질문
+1. 도시의 **건물 밀집도**가 높을수록 **평균기온**이 높아질까? (열섬효과)
+2. 건물 밀집도가 높은 도시는 **풍속**이 더 느릴까? (건물이 바람을 막음)
+3. **녹지율**이 높은 도시는 기온이 더 낮을까?
 
 ### 📂 페이지 안내
 왼쪽 사이드바에서 분석할 페이지를 선택하세요.
-- **서울 VS 인천**
-- **세종 VS 대전**
-- **대구 VS 울산**
-- **광주 VS 부산**
-- **전체 종합**
+- **00 서울 VS 인천**
+- **01 세종 VS 대전**
+- **02 대구 VS 울산**
+- **03 광주 VS 부산**
+- **04 전체 종합** (8개 도시 상관관계 분석)
+
+### 💡 핵심 개념: 밀도로 비교하기
+도시마다 크기가 다르므로, 단순 개수가 아니라 **면적당 비율**로 비교합니다.
+- **건물 밀집도** = 건축물 수 ÷ 도시지역면적
+- **녹지율** = 도시공원면적 ÷ 도시지역면적
 """)
 
 st.markdown("---")
 
-# 전체 데이터 미리보기
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
-    # 완전히 비어있는 열 제거
-    df = df.dropna(axis=1, how="all")
-    # 열 이름 공백 정리
-    df.columns = [c.strip() for c in df.columns]
+    df = df.dropna(axis=1, how="all")          # 완전히 빈 열 제거
+    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
     return df
 
 try:
