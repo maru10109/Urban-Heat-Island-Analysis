@@ -9,33 +9,32 @@ st.set_page_config(page_title="서울 VS 인천", page_icon="🏙️", layout="w
 REGION_A = "서울특별시"
 REGION_B = "인천광역시"
 
-# ── 컬럼명 상수 (CSV 헤더와 일치) ──
 COL_REGION = "행정구역별"
-COL_TEMP   = "평균기온(°C)"
-COL_WIND   = "평균 풍속(m/s)"
-COL_PARK   = "총도시공원면적(A) (천㎡)"
-COL_BUILD  = "면적별 건축물 현황(개)"
-COL_URBAN  = "도시지역면적"
 
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    # 여러 인코딩을 순서대로 시도
     for enc in ["utf-8", "cp949", "euc-kr", "utf-8-sig"]:
         try:
             df = pd.read_csv(path, encoding=enc)
-            break  # 성공하면 반복 중단
+            break
         except UnicodeDecodeError:
-            continue  # 실패하면 다음 인코딩 시도
+            continue
     else:
-        # 모든 인코딩이 실패한 경우
         raise ValueError("CSV 파일의 인코딩을 읽을 수 없습니다.")
 
-    df = df.dropna(axis=1, how="all")             # 완전히 빈 열 제거
-    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
+    df = df.dropna(axis=1, how="all")
+    df.columns = [c.strip() for c in df.columns]
+
+    # ── 파생 지표 계산 ──
+    col_build = next((c for c in df.columns if "건축물" in c), None)
+    col_park  = next((c for c in df.columns if "공원" in c), None)
+    col_urban = next((c for c in df.columns if "도시지역면적" in c), None)
+
+    df["건물밀집도"] = df[col_build] / df[col_urban] * 1_000_000
+    df["녹지율(%)"]  = df[col_park] * 1000 / df[col_urban] * 100
     return df
 
 def find_col(df, keyword):
-    """헤더 이름이 살짝 달라도 키워드로 컬럼 찾기"""
     for c in df.columns:
         if keyword in c:
             return c
@@ -51,7 +50,6 @@ st.title(f"🏙️ {REGION_A} VS {REGION_B}")
 st.markdown("##### 건물 밀집도와 녹지율에 따른 기온·풍속 비교")
 st.markdown("---")
 
-# 실제 컬럼명 매칭 (헤더 표기 차이 대비)
 c_temp  = find_col(df, "평균기온")
 c_wind  = find_col(df, "풍속")
 c_dense = "건물밀집도"
@@ -126,6 +124,5 @@ st.info(f"""
 > (예: 인천은 바다와 인접해 풍속·기온에 다른 요인이 작용할 수 있어요!)
 """)
 
-# ── 원본 데이터 ──
 with st.expander("📋 원본 데이터 보기"):
     st.dataframe(two, use_container_width=True)
