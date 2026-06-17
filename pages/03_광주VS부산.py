@@ -18,12 +18,19 @@ COL_URBAN  = "도시지역면적"
 
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df = df.dropna(axis=1, how="all")
-    df.columns = [c.strip() for c in df.columns]
-    # 파생 지표 계산
-    df["건물밀집도"] = df[COL_BUILD] / df[COL_URBAN] * 1_000_000   # 면적 100만㎡당 건물 수
-    df["녹지율(%)"] = df[COL_PARK] * 1000 / df[COL_URBAN] * 100     # 공원면적 비율(%)
+    # 여러 인코딩을 순서대로 시도
+    for enc in ["utf-8", "cp949", "euc-kr", "utf-8-sig"]:
+        try:
+            df = pd.read_csv(path, encoding=enc)
+            break  # 성공하면 반복 중단
+        except UnicodeDecodeError:
+            continue  # 실패하면 다음 인코딩 시도
+    else:
+        # 모든 인코딩이 실패한 경우
+        raise ValueError("CSV 파일의 인코딩을 읽을 수 없습니다.")
+
+    df = df.dropna(axis=1, how="all")             # 완전히 빈 열 제거
+    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
     return df
 
 def find_col(df, keyword):
