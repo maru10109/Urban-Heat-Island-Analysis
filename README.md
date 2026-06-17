@@ -12,6 +12,13 @@
 도시화가 진행되면서 도심 지역의 기온이 주변보다 높아지는 **열섬효과(Urban Heat Island)** 현상이 나타납니다.
 본 프로젝트는 대한민국 8개 주요 도시의 데이터를 활용하여 다음 가설들을 검증합니다.
 
+link
+평균 기온, 평균 풍속 https://data.kma.go.kr/data/grnd/selectAsosRltmList.do?pgmNo=36
+도시 지역 면적 https://kosis.kr/statHtml/statHtml.do?sso=ok&returnurl=https%3A%2F%2Fkosis.kr%3A443%2FstatHtml%2FstatHtml.do%3Fconn_path%3DMT_GTITLE01%26list_id%3D107%26obj_var_id%3D%26seqNo%3D%26tblId%3DDT_1YL21291E%26vw_cd%3DMT_GTITLE01%26itm_id%3D%26language%3Dkor%26lang_mode%3Dko%26orgId%3D101%26
+도시 공원 면적 https://kosis.kr/statHtml/statHtml.do?sso=ok&returnurl=https%3A%2F%2Fkosis.kr%3A443%2FstatHtml%2FstatHtml.do%3Fconn_path%3DMT_GTITLE01%26list_id%3D108%26obj_var_id%3D%26seqNo%3D%26tblId%3DDT_1YL21281%26vw_cd%3DMT_GTITLE01%26itm_id%3D%26language%3Dkor%26lang_mode%3Dko%26orgId%3D101%26
+건축물 개수 https://kosis.kr/statHtml/statHtml.do?sso=ok&returnurl=https%3A%2F%2Fkosis.kr%3A443%2FstatHtml%2FstatHtml.do%3Fconn_path%3DMT_ZTITLE%26list_id%3DM1_5%26obj_var_id%3D%26seqNo%3D%26tblId%3DDT_MLTM_540%26vw_cd%3DMT_ZTITLE%26itm_id%3D%26language%3Dkor%26lang_mode%3Dko%26orgId%3D116%26
+
+
 ### 🎯 연구 질문 (가설)
 
 1. **건물 밀집도가 높을수록 평균기온이 높을까?** (열섬효과)
