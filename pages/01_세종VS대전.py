@@ -9,33 +9,31 @@ st.set_page_config(page_title="세종 VS 대전", page_icon="🏙️", layout="w
 REGION_A = "세종특별자치시"
 REGION_B = "대전광역시"
 
-# ── 컬럼명 상수 (CSV 헤더와 일치) ──
 COL_REGION = "행정구역별"
-COL_TEMP   = "평균기온(°C)"
-COL_WIND   = "평균 풍속(m/s)"
-COL_PARK   = "총도시공원면적(A) (천㎡)"
-COL_BUILD  = "면적별 건축물 현황(개)"
-COL_URBAN  = "도시지역면적"
 
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    # 여러 인코딩을 순서대로 시도
     for enc in ["utf-8", "cp949", "euc-kr", "utf-8-sig"]:
         try:
             df = pd.read_csv(path, encoding=enc)
-            break  # 성공하면 반복 중단
+            break
         except UnicodeDecodeError:
-            continue  # 실패하면 다음 인코딩 시도
+            continue
     else:
-        # 모든 인코딩이 실패한 경우
         raise ValueError("CSV 파일의 인코딩을 읽을 수 없습니다.")
 
-    df = df.dropna(axis=1, how="all")             # 완전히 빈 열 제거
-    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
+    df = df.dropna(axis=1, how="all")
+    df.columns = [c.strip() for c in df.columns]
+
+    col_build = next((c for c in df.columns if "건축물" in c), None)
+    col_park  = next((c for c in df.columns if "공원" in c), None)
+    col_urban = next((c for c in df.columns if "도시지역면적" in c), None)
+
+    df["건물밀집도"] = df[col_build] / df[col_urban] * 1_000_000
+    df["녹지율(%)"]  = df[col_park] * 1000 / df[col_urban] * 100
     return df
 
 def find_col(df, keyword):
-    """헤더 이름이 살짝 달라도 키워드로 컬럼 찾기"""
     for c in df.columns:
         if keyword in c:
             return c
@@ -51,7 +49,6 @@ st.title(f"🏙️ {REGION_A} VS {REGION_B}")
 st.markdown("##### 건물 밀집도와 녹지율에 따른 기온·풍속 비교")
 st.markdown("---")
 
-# 실제 컬럼명 매칭 (헤더 표기 차이 대비)
 c_temp  = find_col(df, "평균기온")
 c_wind  = find_col(df, "풍속")
 c_dense = "건물밀집도"
@@ -65,7 +62,6 @@ if len(two) < 2:
 a = two[two[COL_REGION] == REGION_A].iloc[0]
 b = two[two[COL_REGION] == REGION_B].iloc[0]
 
-# ── 핵심 지표 카드 ──
 st.subheader("📌 핵심 지표 한눈에 보기")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric(f"{REGION_A} 평균기온", f"{a[c_temp]:.1f}℃",
@@ -79,7 +75,6 @@ m4.metric(f"{REGION_A} 녹지율", f"{a[c_green]:.2f}%",
 
 st.markdown("---")
 
-# ── 항목별 막대 비교 ──
 st.subheader("📊 항목별 비교")
 metrics = [
     (c_temp, "평균기온(℃)"),
@@ -104,7 +99,6 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("---")
 
-# ── 가설 검증 해석 ──
 st.subheader("🔍 가설 검증 해석")
 denser = REGION_A if a[c_dense] > b[c_dense] else REGION_B
 denser_row = a if a[c_dense] > b[c_dense] else b
@@ -123,9 +117,7 @@ st.info(f"""
 - 🌳 **녹지율**: `{denser}`의 녹지율이 `{other_name}`보다 **{green_check}**
 
 > 💭 위 결과가 가설과 일치하나요? 다르다면 왜 그럴지 생각해보세요.
-> (예: 인천은 바다와 인접해 풍속·기온에 다른 요인이 작용할 수 있어요!)
 """)
 
-# ── 원본 데이터 ──
 with st.expander("📋 원본 데이터 보기"):
     st.dataframe(two, use_container_width=True)
