@@ -7,25 +7,29 @@ import plotly.express as px
 st.set_page_config(page_title="전체 종합 분석", page_icon="📊", layout="wide")
 
 COL_REGION = "행정구역별"
-COL_URBAN  = "도시지역면적"
 
 @st.cache_data
-@st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    # 여러 인코딩을 순서대로 시도
     for enc in ["utf-8", "cp949", "euc-kr", "utf-8-sig"]:
         try:
             df = pd.read_csv(path, encoding=enc)
-            break  # 성공하면 반복 중단
+            break
         except UnicodeDecodeError:
-            continue  # 실패하면 다음 인코딩 시도
+            continue
     else:
-        # 모든 인코딩이 실패한 경우
         raise ValueError("CSV 파일의 인코딩을 읽을 수 없습니다.")
 
-    df = df.dropna(axis=1, how="all")             # 완전히 빈 열 제거
-    df.columns = [c.strip() for c in df.columns]  # 열 이름 공백 제거
+    df = df.dropna(axis=1, how="all")
+    df.columns = [c.strip() for c in df.columns]
+
+    col_build = next((c for c in df.columns if "건축물" in c), None)
+    col_park  = next((c for c in df.columns if "공원" in c), None)
+    col_urban = next((c for c in df.columns if "도시지역면적" in c), None)
+
+    df["건물밀집도"] = df[col_build] / df[col_urban] * 1_000_000
+    df["녹지율(%)"]  = df[col_park] * 1000 / df[col_urban] * 100
     return df
+
 def find_col(df, keyword):
     for c in df.columns:
         if keyword in c:
@@ -38,15 +42,8 @@ except FileNotFoundError:
     st.error("CSV 파일(통합본.csv)을 찾을 수 없습니다.")
     st.stop()
 
-# 컬럼 매칭
-c_temp  = find_col(df, "평균기온")
-c_wind  = find_col(df, "풍속")
-c_park  = find_col(df, "공원")
-c_build = find_col(df, "건축물")
-
-# 파생 지표
-df["건물밀집도"] = df[c_build] / df[COL_URBAN] * 1_000_000
-df["녹지율(%)"]  = df[c_park] * 1000 / df[COL_URBAN] * 100
+c_temp = find_col(df, "평균기온")
+c_wind = find_col(df, "풍속")
 
 st.title("📊 전체 도시 종합 분석")
 st.markdown("##### 8개 도시 데이터로 열섬효과 가설을 검증합니다")
@@ -61,7 +58,7 @@ st.dataframe(table, use_container_width=True)
 
 st.markdown("---")
 
-# ── 2. 건물밀집도 vs 평균기온 산점도 ──
+# ── 2. 건물밀집도 vs 평균기온 ──
 st.subheader("🌡️ 건물밀집도와 평균기온의 관계")
 st.caption("가설: 건물밀집도가 높을수록 기온이 높다 (열섬효과)")
 
@@ -71,7 +68,6 @@ fig1 = px.scatter(
     color_continuous_scale="RdYlBu_r",
     labels={"건물밀집도": "건물밀집도 (면적당 건물 수)", c_temp: "평균기온(℃)"},
 )
-# 추세선
 coef = np.polyfit(df["건물밀집도"], df[c_temp], 1)
 x_line = np.linspace(df["건물밀집도"].min(), df["건물밀집도"].max(), 100)
 fig1.add_trace(go.Scatter(
